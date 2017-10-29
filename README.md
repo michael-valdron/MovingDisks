@@ -1,2 +1,2 @@
 # MovingDisks
-CSCI 3055U Assignment 2 Part 1
+CSCI 3010U Assignment 2 Part 1
