@@ -65,9 +65,13 @@ class Disk(pygame.sprite.Sprite):
 
 class World:
 
-    def __init__(self):
+    def __init__(self, dt, w, h):
         self.disks = []
         self.e = 1. # Coefficient of restitution
+        self.dt = dt
+        self.tol_distance = 0.000001
+        self.win_width = w
+        self.win_height = h
 
     def add(self, imgfile, radius, mass=1.0):
         disk = Disk(imgfile, radius, mass)
@@ -83,11 +87,42 @@ class World:
         for d in self.disks:
             d.draw(screen)
 
-    def update(self, dt):
+    def update(self):
         self.check_for_collisions()
 
         for d in self.disks:
-            d.update(dt)
+            d.update(self.dt)
+    
+    def is_boundary_collision(self, state, r):
+        c1 = ((state[0] + r) <= 0)
+        c2 = ((state[1] + r) <= 0)
+        c3 = ((state[0] + r) >= self.win_width)
+        c4 = ((state[1] + r) >= self.win_height)
+        return [c1, c2, c3, c4]
+    
+    def binary_search(self, d, i, b):
+        dt = self.dt
+        dt_frac = self.dt
+        new_state = d.state
+        
+        if b == 0:
+            while True:
+                dt_frac /= 2
+                if new_state[i] <= self.tol_distance and new_state[i] >= b:
+                    break
+                elif new_state[i] > self.tol_distance:
+                    dt += dt_frac
+                else:
+                    dt -= dt_frac
+        else:
+            while True:
+                dt_frac /= 2
+                if new_state[i] >= (b - self.tol_distance) and new_state[i] <= b:
+                    break
+                elif new_state[i] < (b - self.tol_distance):
+                    dt += dt_frac
+                else:
+                    dt -= dt_frac
 
     def check_for_collisions(self):
         for i in range(0, len(self.disks)):
@@ -112,7 +147,10 @@ class World:
                 vBF = vB - (np.dot(j, n) / mB)
                 disk1.set_vel(vAF[0:2])
                 disk2.set_vel(vBF[0:2])
-
+    
+    def check_for_boundary_collisions(self, d):
+        pass
+        
 
 def main():
 
@@ -125,14 +163,12 @@ def main():
     win_width = 640
     win_height = 640
     screen = pygame.display.set_mode((win_width, win_height))
-    pygame.display.set_caption('Disk-Disk collisions')
+    pygame.display.set_caption('Moving Disks')
 
-    world = World()
+    world = World(0.1, win_width, win_height)
     world.add('./img/disk-blue.png', 32, 2).set_pos([100,100]).set_vel([2,2])
     world.add('./img/disk-pink.png', 32, 1).set_pos([180,100]).set_vel([-2,0])
-    world.add('./img/disk-red.png', 64, 1).set_pos([320,440])
-    
-    dt = 0.1
+    #world.add('./img/disk-red.png', 64, 1).set_pos([320,440])
 
     while True:
         # 30 fps
@@ -151,7 +187,7 @@ def main():
         # Clear the background, and draw the sprites
         screen.fill(WHITE)
         world.draw(screen)
-        world.update(dt)
+        world.update()
 
         pygame.display.update()
 
