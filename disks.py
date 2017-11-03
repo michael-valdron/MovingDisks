@@ -21,15 +21,15 @@ def normalize(v):
 
 class Disk(pygame.sprite.Sprite):
     
-    def __init__(self, colour, radius, mass=1.0):
+    def __init__(self, imgfile, radius, mass=1.0):
         pygame.sprite.Sprite.__init__(self)
 
-        self.image = pygame.Surface([radius*2, radius*2]) 
+        self.image = pygame.image.load(imgfile)
+        self.image = pygame.transform.scale(self.image, (radius*2, radius*2)) 
         self.state = [0, 0, 0, 0]
         self.mass = mass
         self.t = 0
         self.radius = radius
-        self.colour = colour
         self.solver = ode(self.f)
         self.solver.set_integrator('dop853')
         self.solver.set_initial_value(self.state, self.t)
@@ -57,10 +57,7 @@ class Disk(pygame.sprite.Sprite):
 
     def draw(self, surface):
         rect = self.image.get_rect()
-        self.image.fill(WHITE)
         rect.center = (self.state[0], 640-self.state[1]) # Flipping y
-        pygame.draw.circle(self.image, self.colour, rect.center, self.radius, 20)
-        rect = self.image.get_rect()
         surface.blit(self.image, rect)
 
     def pprint(self):
@@ -76,8 +73,8 @@ class World:
         self.win_width = w
         self.win_height = h
 
-    def add(self, colour, radius, mass=1.0):
-        disk = Disk(colour, radius, mass)
+    def add(self, imgfile, radius, mass=1.0):
+        disk = Disk(imgfile, radius, mass)
         self.disks.append(disk)
         return disk
 
@@ -183,7 +180,7 @@ def main():
     screen = pygame.display.set_mode((win_width, win_height))
     pygame.display.set_caption('Moving Disks')
     
-    disk_colour = [RED, GREEN, BLUE]
+    disk_imgfile = ['./img/disk-red.png', './img/disk-pink.png', './img/disk-blue.png']
     n_disks = 10
     
     sel_pos = []
@@ -192,7 +189,7 @@ def main():
     while i < n_disks:
         pos = [rand.randint(50,(win_width-50)),rand.randint(50,(win_height-50))]
         if not pos in sel_pos and is_pos_ok(pos, sel_pos, 0.5):
-            world.add(rand.choice(disk_colour), 32, 1).set_pos(pos).set_vel([rand.randint(-10,10),rand.randint(-10,10)])
+            world.add(rand.choice(disk_imgfile), 32, 1).set_pos(pos).set_vel([rand.randint(-10,10),rand.randint(-10,10)])
             sel_pos.append(pos)
             i += 1
             
