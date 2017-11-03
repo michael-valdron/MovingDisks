@@ -4,8 +4,9 @@
 # Date: November 7, 2017
 
 import pygame, sys
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import numpy as np
+import random as rand
 from scipy.integrate import ode
 
 # set up the colors
@@ -20,16 +21,15 @@ def normalize(v):
 
 class Disk(pygame.sprite.Sprite):
     
-    def __init__(self, imgfile, radius, mass=1.0):
+    def __init__(self, colour, radius, mass=1.0):
         pygame.sprite.Sprite.__init__(self)
 
-        self.image = pygame.image.load(imgfile)
-        self.image = pygame.transform.scale(self.image, (radius*2, radius*2)) 
+        self.image = pygame.Surface([radius*2, radius*2]) 
         self.state = [0, 0, 0, 0]
         self.mass = mass
         self.t = 0
         self.radius = radius
-
+        self.colour = colour
         self.solver = ode(self.f)
         self.solver.set_integrator('dop853')
         self.solver.set_initial_value(self.state, self.t)
@@ -57,7 +57,10 @@ class Disk(pygame.sprite.Sprite):
 
     def draw(self, surface):
         rect = self.image.get_rect()
+        self.image.fill(WHITE)
         rect.center = (self.state[0], 640-self.state[1]) # Flipping y
+        pygame.draw.circle(self.image, self.colour, rect.center, self.radius, 20)
+        rect = self.image.get_rect()
         surface.blit(self.image, rect)
 
     def pprint(self):
@@ -73,8 +76,8 @@ class World:
         self.win_width = w
         self.win_height = h
 
-    def add(self, imgfile, radius, mass=1.0):
-        disk = Disk(imgfile, radius, mass)
+    def add(self, colour, radius, mass=1.0):
+        disk = Disk(colour, radius, mass)
         self.disks.append(disk)
         return disk
 
@@ -93,39 +96,40 @@ class World:
         for d in self.disks:
             d.update(self.dt)
     
-    def is_boundary_collision(self, state, r):
-        c1 = ((state[0] + r) <= 0)
-        c2 = ((state[1] + r) <= 0)
-        c3 = ((state[0] + r) >= self.win_width)
-        c4 = ((state[1] + r) >= self.win_height)
-        return [c1, c2, c3, c4]
-    
     def binary_search(self, d, i, b):
-        dt = self.dt
         dt_frac = self.dt
+        dt = self.dt
         new_state = d.state
-        
         if b == 0:
             while True:
-                dt_frac /= 2
-                if new_state[i] <= self.tol_distance and new_state[i] >= b:
+                dt_frac *= 0.5 
+                if (new_state[i] - d.radius) <= self.tol_distance and new_state[i] >= b:
                     break
-                elif new_state[i] > self.tol_distance:
+                elif (new_state[i] - d.radius) > self.tol_distance:
                     dt += dt_frac
                 else:
                     dt -= dt_frac
+                d.solver.set_initial_value(d.state, d.t)
+                new_state = d.solver.integrate(d.t + dt)
         else:
             while True:
-                dt_frac /= 2
-                if new_state[i] >= (b - self.tol_distance) and new_state[i] <= b:
+                dt_frac *= 0.5
+                if (new_state[i] + d.radius) >= (b - self.tol_distance) and new_state[i] <= b:
                     break
-                elif new_state[i] < (b - self.tol_distance):
+                elif (new_state[i] + d.radius) < (b - self.tol_distance):
                     dt += dt_frac
                 else:
                     dt -= dt_frac
+                d.solver.set_initial_value(d.state, d.t)
+                new_state = d.solver.integrate(d.t + dt)
+        d.t += dt
+        new_state[i+2] *= -1
+        d.set_pos(new_state[0:2])
+        d.set_vel(new_state[2:])
 
     def check_for_collisions(self):
         for i in range(0, len(self.disks)):
+            self.check_for_boundary_collisions(self.disks[i])
             for j in range(i+1, len(self.disks)):
                 self.check_for_disk_collisions(self.disks[i], self.disks[j])
     
@@ -149,8 +153,22 @@ class World:
                 disk2.set_vel(vBF[0:2])
     
     def check_for_boundary_collisions(self, d):
-        pass
+        if (d.state[0] - d.radius) <= 0:
+            self.binary_search(d, 0, 0)
+        elif (d.state[0] + d.radius) >= self.win_width:
+            self.binary_search(d, 0, self.win_width)
+        elif (d.state[1] - d.radius) <= 0:
+            self.binary_search(d, 1, 0)
+        elif (d.state[1] + d.radius) >= self.win_height:
+            self.binary_search(d, 1, self.win_height)
         
+def is_pos_ok(cur_pos, pos, d_tol):
+    b = True
+    for p in pos:
+        if not abs(cur_pos[0] - p[0]) > d_tol or not abs(cur_pos[1] - p[1]) > d_tol:
+            b = False
+            break
+    return b
 
 def main():
 
@@ -164,10 +182,20 @@ def main():
     win_height = 640
     screen = pygame.display.set_mode((win_width, win_height))
     pygame.display.set_caption('Moving Disks')
-
+    
+    disk_colour = [RED, GREEN, BLUE]
+    n_disks = 10
+    
+    sel_pos = []
     world = World(0.1, win_width, win_height)
-    world.add('./img/disk-blue.png', 32, 2).set_pos([100,100]).set_vel([2,2])
-    world.add('./img/disk-pink.png', 32, 1).set_pos([180,100]).set_vel([-2,0])
+    i = 0
+    while i < n_disks:
+        pos = [rand.randint(50,(win_width-50)),rand.randint(50,(win_height-50))]
+        if not pos in sel_pos and is_pos_ok(pos, sel_pos, 0.5):
+            world.add(rand.choice(disk_colour), 32, 1).set_pos(pos).set_vel([rand.randint(-10,10),rand.randint(-10,10)])
+            sel_pos.append(pos)
+            i += 1
+            
     #world.add('./img/disk-red.png', 64, 1).set_pos([320,440])
 
     while True:
