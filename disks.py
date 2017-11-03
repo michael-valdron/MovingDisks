@@ -7,6 +7,7 @@ import pygame, sys
 #import matplotlib.pyplot as plt
 import numpy as np
 import random as rand
+from math import floor
 from scipy.integrate import ode
 
 # set up the colors
@@ -15,6 +16,9 @@ WHITE = (255, 255, 255)
 RED = (255, 0, 0)
 GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
+
+# Model Scale
+SCALE = 128
 
 def normalize(v):
     return v / np.linalg.norm(v)
@@ -25,7 +29,7 @@ class Disk(pygame.sprite.Sprite):
         pygame.sprite.Sprite.__init__(self)
 
         self.image = pygame.image.load(imgfile)
-        self.image = pygame.transform.scale(self.image, (radius*2, radius*2)) 
+        self.image = pygame.transform.scale(self.image, (int(floor(radius*SCALE)), int(floor(radius*SCALE))))
         self.state = [0, 0, 0, 0]
         self.mass = mass
         self.t = 0
@@ -57,7 +61,7 @@ class Disk(pygame.sprite.Sprite):
 
     def draw(self, surface):
         rect = self.image.get_rect()
-        rect.center = (self.state[0], 640-self.state[1]) # Flipping y
+        rect.center = (self.state[0]*SCALE, 640-(self.state[1]*SCALE)) # Flipping y
         surface.blit(self.image, rect)
 
     def pprint(self):
@@ -69,7 +73,7 @@ class World:
         self.disks = []
         self.e = 1. # Coefficient of restitution
         self.dt = dt
-        self.tol_distance = 0.000001
+        self.tol_distance = (1**(-12))
         self.win_width = w
         self.win_height = h
 
@@ -100,9 +104,9 @@ class World:
         if b == 0:
             while True:
                 dt_frac *= 0.5 
-                if (new_state[i] - d.radius) <= self.tol_distance and new_state[i] >= b:
+                if new_state[i] <= self.tol_distance and new_state[i] >= b:
                     break
-                elif (new_state[i] - d.radius) > self.tol_distance:
+                elif new_state[i] > self.tol_distance:
                     dt += dt_frac
                 else:
                     dt -= dt_frac
@@ -111,9 +115,9 @@ class World:
         else:
             while True:
                 dt_frac *= 0.5
-                if (new_state[i] + d.radius) >= (b - self.tol_distance) and new_state[i] <= b:
+                if new_state[i] >= (b - self.tol_distance) and new_state[i] <= b:
                     break
-                elif (new_state[i] + d.radius) < (b - self.tol_distance):
+                elif new_state[i] < (b - self.tol_distance):
                     dt += dt_frac
                 else:
                     dt -= dt_frac
@@ -152,12 +156,12 @@ class World:
     def check_for_boundary_collisions(self, d):
         if (d.state[0] - d.radius) <= 0:
             self.binary_search(d, 0, 0)
-        elif (d.state[0] + d.radius) >= self.win_width:
-            self.binary_search(d, 0, self.win_width)
+        elif (d.state[0] + d.radius) >= (self.win_width/SCALE):
+            self.binary_search(d, 0, (self.win_width/SCALE))
         elif (d.state[1] - d.radius) <= 0:
             self.binary_search(d, 1, 0)
-        elif (d.state[1] + d.radius) >= self.win_height:
-            self.binary_search(d, 1, self.win_height)
+        elif (d.state[1] + d.radius) >= (self.win_height/SCALE):
+            self.binary_search(d, 1, (self.win_height/SCALE))
         
 def is_pos_ok(cur_pos, pos, d_tol):
     b = True
@@ -184,12 +188,13 @@ def main():
     n_disks = 10
     
     sel_pos = []
-    world = World(0.1, win_width, win_height)
+    world = World(0.0033, win_width, win_height)
     i = 0
     while i < n_disks:
-        pos = [rand.randint(50,(win_width-50)),rand.randint(50,(win_height-50))]
-        if not pos in sel_pos and is_pos_ok(pos, sel_pos, 0.5):
-            world.add(rand.choice(disk_imgfile), 32, 1).set_pos(pos).set_vel([rand.randint(-10,10),rand.randint(-10,10)])
+        pos = [rand.uniform(0.5,((win_width/SCALE)-0.5)),rand.uniform(0.5,((win_height/SCALE)-0.5))]
+        r = rand.uniform(0.1, 0.2)
+        if not pos in sel_pos and is_pos_ok(pos, sel_pos, (r + 0.1)):
+            world.add(rand.choice(disk_imgfile), r, rand.randint(1,5)).set_pos(pos).set_vel([rand.uniform(-10,10),rand.uniform(-10,10)])
             sel_pos.append(pos)
             i += 1
             
