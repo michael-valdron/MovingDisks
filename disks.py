@@ -29,7 +29,7 @@ class Disk(pygame.sprite.Sprite):
         pygame.sprite.Sprite.__init__(self)
 
         self.image = pygame.image.load(imgfile)
-        self.image = pygame.transform.scale(self.image, (int(floor(radius*SCALE)), int(floor(radius*SCALE))))
+        self.image = pygame.transform.scale(self.image, (int(floor(radius*SCALE*2)), int(floor(radius*SCALE*2))))
         self.state = [0, 0, 0, 0]
         self.mass = mass
         self.t = 0
@@ -73,7 +73,7 @@ class World:
         self.disks = []
         self.e = 1. # Coefficient of restitution
         self.dt = dt
-        self.tol_distance = (1**(-12))
+        self.tol_distance = 0.00001
         self.win_width = w
         self.win_height = h
 
@@ -96,6 +96,7 @@ class World:
 
         for d in self.disks:
             d.update(self.dt)
+        self.pprint()
     
     def binary_search(self, d, i, b):
         dt_frac = self.dt
@@ -104,9 +105,9 @@ class World:
         if b == 0:
             while True:
                 dt_frac *= 0.5 
-                if new_state[i] <= self.tol_distance and new_state[i] >= b:
+                if (new_state[i] - d.radius) <= self.tol_distance and new_state[i] >= b:
                     break
-                elif new_state[i] > self.tol_distance:
+                elif (new_state[i] - d.radius) > self.tol_distance:
                     dt += dt_frac
                 else:
                     dt -= dt_frac
@@ -115,9 +116,9 @@ class World:
         else:
             while True:
                 dt_frac *= 0.5
-                if new_state[i] >= (b - self.tol_distance) and new_state[i] <= b:
+                if (new_state[i] + d.radius) >= (b - self.tol_distance) and new_state[i] <= b:
                     break
-                elif new_state[i] < (b - self.tol_distance):
+                elif (new_state[i] + d.radius) < (b - self.tol_distance):
                     dt += dt_frac
                 else:
                     dt -= dt_frac
@@ -194,11 +195,9 @@ def main():
         pos = [rand.uniform(0.5,((win_width/SCALE)-0.5)),rand.uniform(0.5,((win_height/SCALE)-0.5))]
         r = rand.uniform(0.1, 0.2)
         if not pos in sel_pos and is_pos_ok(pos, sel_pos, (r + 0.1)):
-            world.add(rand.choice(disk_imgfile), r, rand.randint(1,5)).set_pos(pos).set_vel([rand.uniform(-10,10),rand.uniform(-10,10)])
+            world.add(rand.choice(disk_imgfile), r, rand.uniform(1,5)).set_pos(pos).set_vel([rand.uniform(-10,10),rand.uniform(-10,10)])
             sel_pos.append(pos)
             i += 1
-            
-    #world.add('./img/disk-red.png', 64, 1).set_pos([320,440])
 
     while True:
         # 30 fps
