@@ -4,7 +4,6 @@
 # Date: November 7, 2017
 
 import pygame, sys
-#import matplotlib.pyplot as plt
 import numpy as np
 import random as rand
 from math import floor
@@ -198,7 +197,12 @@ def main():
             world.add(rand.choice(disk_imgfile), r, rand.uniform(1,5)).set_pos(pos).set_vel([rand.uniform(-10,10),rand.uniform(-10,10)])
             sel_pos.append(pos)
             i += 1
-
+    
+    print '--------------------------------'
+    print 'Usage:'
+    print 'Press (q) to quit simulation'
+    print '--------------------------------'
+    
     while True:
         # 30 fps
         clock.tick(30)
