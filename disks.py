@@ -3,24 +3,14 @@
 # Student ID: 100487615
 # Date: November 7, 2017
 
-import pygame, sys
+import pygame, sys, os
 import numpy as np
 import random as rand
 from math import floor
 from scipy.integrate import ode
 
-# set up the colors
-BLACK = (0, 0, 0)
-WHITE = (255, 255, 255)
-RED = (255, 0, 0)
-GREEN = (0, 255, 0)
-BLUE = (0, 0, 255)
-
 # Model Scale
 SCALE = 128
-
-def normalize(v):
-    return v / np.linalg.norm(v)
 
 class Disk(pygame.sprite.Sprite):
     
@@ -54,17 +44,10 @@ class Disk(pygame.sprite.Sprite):
         self.t += dt
         self.state = self.solver.integrate(self.t)
 
-    def move_by(self, delta):
-        self.state[0:2] = np.add(self.pos, delta)
-        return self
-
     def draw(self, surface):
         rect = self.image.get_rect()
         rect.center = (self.state[0]*SCALE, 640-(self.state[1]*SCALE)) # Flipping y
         surface.blit(self.image, rect)
-
-    def pprint(self):
-        print 'Disk', self.state
 
 class World:
 
@@ -81,11 +64,6 @@ class World:
         self.disks.append(disk)
         return disk
 
-    def pprint(self):
-        print '#disks', len(self.disks)
-        for d in self.disks:
-            d.pprint()
-
     def draw(self, screen):
         for d in self.disks:
             d.draw(screen)
@@ -95,7 +73,6 @@ class World:
 
         for d in self.disks:
             d.update(self.dt)
-        self.pprint()
     
     def binary_search(self, d, i, b):
         dt_frac = self.dt
@@ -163,12 +140,15 @@ class World:
         elif (d.state[1] + d.radius) >= (self.win_height/SCALE):
             self.binary_search(d, 1, (self.win_height/SCALE))
         
-def is_pos_ok(cur_pos, pos, d_tol):
+def is_pos_ok(cur_pos, cur_vel, pos, d_tol):
     b = True
-    for p in pos:
-        if not abs(cur_pos[0] - p[0]) > d_tol or not abs(cur_pos[1] - p[1]) > d_tol:
-            b = False
-            break
+    if not cur_pos in pos and (cur_vel[0] != 0 and cur_vel[1] != 0):
+        for p in pos:
+            if not abs(cur_pos[0] - p[0]) > d_tol or not abs(cur_pos[1] - p[1]) > d_tol:
+                b = False
+                break
+    else:
+        b = False
     return b
 
 def main():
@@ -184,7 +164,11 @@ def main():
     screen = pygame.display.set_mode((win_width, win_height))
     pygame.display.set_caption('Moving Disks')
     
-    disk_imgfile = ['./img/disk-red.png', './img/disk-pink.png', './img/disk-blue.png']
+    img_dir = './img/'
+    files = os.listdir(img_dir)
+    disk_imgfile = []
+    for f in files:
+        disk_imgfile.append(img_dir + f)
     n_disks = 10
     
     sel_pos = []
@@ -192,9 +176,10 @@ def main():
     i = 0
     while i < n_disks:
         pos = [rand.uniform(0.5,((win_width/SCALE)-0.5)),rand.uniform(0.5,((win_height/SCALE)-0.5))]
+        vel = [rand.uniform(-10,10),rand.uniform(-10,10)]
         r = rand.uniform(0.1, 0.2)
-        if not pos in sel_pos and is_pos_ok(pos, sel_pos, (r + 0.1)):
-            world.add(rand.choice(disk_imgfile), r, rand.uniform(1,5)).set_pos(pos).set_vel([rand.uniform(-10,10),rand.uniform(-10,10)])
+        if is_pos_ok(pos, vel, sel_pos, (r + 0.1)):
+            world.add(rand.choice(disk_imgfile), r, rand.uniform(1,5)).set_pos(pos).set_vel(vel)
             sel_pos.append(pos)
             i += 1
     
@@ -218,7 +203,7 @@ def main():
             pass
 
         # Clear the background, and draw the sprites
-        screen.fill(WHITE)
+        screen.fill((255,255,255))
         world.draw(screen)
         world.update()
 
