@@ -3,22 +3,28 @@
 # Student ID: 100487615
 # Date: November 7, 2017
 
-import pygame, sys, os
+import pygame, sys
 import numpy as np
 import random as rand
 from math import floor
 from scipy.integrate import ode
+
+# set up the colors
+BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
+RED = (255, 0, 0)
+GREEN = (0, 255, 0)
+BLUE = (0, 0, 255)
 
 # Model Scale
 SCALE = 128
 
 class Disk(pygame.sprite.Sprite):
     
-    def __init__(self, imgfile, radius, mass=1.0):
+    def __init__(self, colour, radius, mass=1.0):
         pygame.sprite.Sprite.__init__(self)
 
-        self.image = pygame.image.load(imgfile)
-        self.image = pygame.transform.scale(self.image, (int(floor(radius*SCALE*2)), int(floor(radius*SCALE*2))))
+        self.colour = colour
         self.state = [0, 0, 0, 0]
         self.mass = mass
         self.t = 0
@@ -45,9 +51,9 @@ class Disk(pygame.sprite.Sprite):
         self.state = self.solver.integrate(self.t)
 
     def draw(self, surface):
-        rect = self.image.get_rect()
-        rect.center = (self.state[0]*SCALE, 640-(self.state[1]*SCALE)) # Flipping y
-        surface.blit(self.image, rect)
+        pygame.draw.circle(surface, self.colour, 
+                           (int(self.state[0]*SCALE), int(640-(self.state[1]*SCALE))), 
+                           int(floor(self.radius*SCALE)))
 
 class World:
 
@@ -59,8 +65,8 @@ class World:
         self.win_width = w
         self.win_height = h
 
-    def add(self, imgfile, radius, mass=1.0):
-        disk = Disk(imgfile, radius, mass)
+    def add(self, colour, radius, mass=1.0):
+        disk = Disk(colour, radius, mass)
         self.disks.append(disk)
         return disk
 
@@ -119,8 +125,8 @@ class World:
         if np.linalg.norm(PA - PB) <= (rA + rB):
             vA = np.asarray(disk1.state[2:4])
             vB = np.asarray(disk2.state[2:4])
-            mA = disk1.mass
-            mB = disk2.mass
+            mA = float(disk1.mass)
+            mB = float(disk2.mass)
             VAB = vA - vB
             n = (PA - PB) / np.linalg.norm(PA - PB)
             if np.dot(VAB, n) < 0:
@@ -164,11 +170,7 @@ def main():
     screen = pygame.display.set_mode((win_width, win_height))
     pygame.display.set_caption('Moving Disks')
     
-    img_dir = './img/'
-    files = os.listdir(img_dir)
-    disk_imgfile = []
-    for f in files:
-        disk_imgfile.append(img_dir + f)
+    disk_colours = [RED, GREEN, BLUE, BLACK]
     n_disks = 10
     
     sel_pos = []
@@ -179,7 +181,7 @@ def main():
         vel = [rand.uniform(-10,10),rand.uniform(-10,10)]
         r = rand.uniform(0.1, 0.2)
         if is_pos_ok(pos, vel, sel_pos, (r + 0.1)):
-            world.add(rand.choice(disk_imgfile), r, rand.uniform(1,5)).set_pos(pos).set_vel(vel)
+            world.add(rand.choice(disk_colours), r, rand.uniform(1,5)).set_pos(pos).set_vel(vel)
             sel_pos.append(pos)
             i += 1
     
